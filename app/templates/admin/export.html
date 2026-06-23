@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Exportar Excel{% endblock %}
+{% block page_title %}Exportar contactos{% endblock %}
+
+{% block content %}
+<div class="two-col-grid export-layout">
+  <!-- Contact selection -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Seleccionar contactos</h3>
+      <p class="text-muted text-sm" style="margin-top:.25rem">
+        Deja sin marcar para exportar todos.
+      </p>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="export-toolbar">
+        <label class="form-check">
+          <input type="checkbox" id="selectAllExport" onchange="toggleAllExport(this)">
+          <span>Seleccionar todo</span>
+        </label>
+        <span class="text-muted text-sm" id="selectedCount">{{ contacts|length }} contactos</span>
+      </div>
+      <div class="export-contact-list">
+        {% if contacts %}
+          {% set vis_fields = fields|selectattr('is_visible')|list %}
+          {% for contact in contacts %}
+          <label class="export-contact-row">
+            <input type="checkbox" class="export-cb" value="{{ contact.id }}" checked
+                   onchange="updateExportCount()">
+            <span class="export-contact-name">{{ contact.get_display_name(vis_fields) }}</span>
+            <span class="text-muted text-sm">#{{ contact.id }}</span>
+          </label>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted" style="padding:1.5rem">Sin contactos.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Export options -->
+  <div class="card" style="align-self:start">
+    <div class="card-header">
+      <h3 class="card-title">Opciones de exportación</h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" id="exportForm">
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="contact_ids" id="exportIds">
+
+        <div class="form-check" style="margin-bottom:1rem">
+          {{ form.visible_fields_only() }}
+          <label for="{{ form.visible_fields_only.id }}">{{ form.visible_fields_only.label.text }}</label>
+        </div>
+
+        <div class="fields-preview">
+          <p class="text-sm fw-medium">Campos a exportar:</p>
+          <ul class="fields-preview-list">
+            {% for field in fields %}
+            <li class="{% if not field.is_visible %}field-hidden{% endif %}">
+              {{ field.display_name }}
+              {% if not field.is_visible %}
+                <span class="badge badge-muted text-sm">oculto</span>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" style="margin-top:1.5rem"
+                onclick="prepareExport()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="8 17 12 21 16 17"/><line x1="12" y1="21" x2="12" y2="9"/>
+            <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+          </svg>
+          Exportar a Excel
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAllExport(master) {
+  document.querySelectorAll('.export-cb').forEach(cb => cb.checked = master.checked);
+  updateExportCount();
+}
+
+function updateExportCount() {
+  const checked = document.querySelectorAll('.export-cb:checked');
+  const total = document.querySelectorAll('.export-cb').length;
+  document.getElementById('selectedCount').textContent =
+    checked.length === total ? `${total} contactos (todos)` : `${checked.length} seleccionados`;
+}
+
+function prepareExport() {
+  const ids = [...document.querySelectorAll('.export-cb:checked')].map(cb => cb.value);
+  document.getElementById('exportIds').value = ids.join(',');
+}
+
+// Init: all checked
+updateExportCount();
+</script>
+{% endblock %}

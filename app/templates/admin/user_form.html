@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('admin.users') }}" class="btn btn-ghost btn-sm">← Volver</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px">
+  <div class="card-header">
+    <h2 class="card-title">{{ title }}</h2>
+  </div>
+  <div class="card-body">
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        <label class="form-label">{{ form.username.label.text }}</label>
+        {{ form.username(class="form-input") }}
+        {% if form.username.errors %}
+          <span class="form-error">{{ form.username.errors[0] }}</span>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{{ form.email.label.text }}</label>
+        {{ form.email(class="form-input") }}
+        {% if form.email.errors %}
+          <span class="form-error">{{ form.email.errors[0] }}</span>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{{ form.role.label.text }}</label>
+        {{ form.role(class="form-select") }}
+      </div>
+
+      <div class="form-check">
+        {{ form.is_active() }}
+        <label for="{{ form.is_active.id }}">{{ form.is_active.label.text }}</label>
+      </div>
+
+      {% if not user %}
+      <div class="info-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Se generará una contraseña segura automáticamente. Cópiala cuando se muestre.
+      </div>
+      {% endif %}
+
+      <div class="btn-row" style="margin-top:1.5rem">
+        <a href="{{ url_for('admin.users') }}" class="btn btn-ghost">Cancelar</a>
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

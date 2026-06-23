@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}Gestionar Contactos{% endblock %}
+{% block page_title %}Gestionar Contactos{% endblock %}
+
+{% block topbar_actions %}
+<form class="search-form" method="GET" action="{{ url_for('admin.contacts') }}">
+  <div class="search-input-wrap">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Buscar…">
+  </div>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if contacts %}
+  <form method="POST" action="{{ url_for('admin.contacts_delete_selected') }}" id="bulkForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="table-toolbar">
+      <label class="form-check">
+        <input type="checkbox" id="selectAll" onchange="toggleAll(this)">
+        <span>Seleccionar todo</span>
+      </label>
+      <button type="submit" class="btn btn-sm btn-danger" id="deleteSelectedBtn"
+              style="display:none"
+              onclick="return confirm('¿Eliminar los contactos seleccionados?')">
+        Eliminar seleccionados
+      </button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:3rem"></th>
+            <th style="width:3rem">#</th>
+            {% for field in fields[:5] %}
+              <th>{{ field.display_name }}</th>
+            {% endfor %}
+            <th style="width:7rem">Visible</th>
+            <th style="width:8rem"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contact in contacts %}
+          <tr>
+            <td>
+              <input type="checkbox" name="contact_ids" value="{{ contact.id }}" class="row-checkbox"
+                     onchange="updateBulkBtn()">
+            </td>
+            <td class="text-muted text-sm">{{ contact.id }}</td>
+            {% for field in fields[:5] %}
+              <td>{{ contact.get_value(field.id) or '—' }}</td>
+            {% endfor %}
+            <td>
+              <button type="button"
+                      class="toggle-btn {% if contact.is_visible %}toggle-on{% else %}toggle-off{% endif %}"
+                      data-id="{{ contact.id }}"
+                      data-url="{{ url_for('admin.contact_toggle', contact_id=contact.id) }}"
+                      onclick="toggleContactVisibility(this)">
+                <span class="toggle-knob"></span>
+              </button>
+            </td>
+            <td>
+              <div class="action-btns">
+                <a href="{{ url_for('contacts.detail', contact_id=contact.id) }}" class="btn btn-xs btn-ghost">Ver</a>
+                <form method="POST" action="{{ url_for('admin.contact_delete', contact_id=contact.id) }}"
+                      style="display:inline"
+                      onsubmit="return confirm('¿Eliminar este contacto?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-xs btn-danger">✕</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+
+  <!-- Pagination -->
+  {% if pagination.pages > 1 %}
+  <div class="pagination-wrap">
+    <span class="pagination-info">{{ pagination.total }} contactos · Página {{ pagination.page }}/{{ pagination.pages }}</span>
+    <div class="pagination">
+      {% if pagination.has_prev %}
+        <a href="{{ url_for('admin.contacts', page=pagination.prev_num, q=search) }}" class="page-btn">‹</a>
+      {% endif %}
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="{{ url_for('admin.contacts', page=p, q=search) }}"
+             class="page-btn {% if p == pagination.page %}active{% endif %}">{{ p }}</a>
+        {% else %}
+          <span class="page-ellipsis">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if pagination.has_next %}
+        <a href="{{ url_for('admin.contacts', page=pagination.next_num, q=search) }}" class="page-btn">›</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    {% if search %}
+      <h3>Sin resultados para «{{ search }}»</h3>
+      <a href="{{ url_for('admin.contacts') }}" class="btn btn-ghost">Limpiar</a>
+    {% else %}
+      <h3>Sin contactos</h3>
+      <a href="{{ url_for('admin.import_contacts') }}" class="btn btn-primary">Importar Excel</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAll(master) {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = master.checked);
+  updateBulkBtn();
+}
+function updateBulkBtn() {
+  const any = document.querySelectorAll('.row-checkbox:checked').length > 0;
+  document.getElementById('deleteSelectedBtn').style.display = any ? 'inline-flex' : 'none';
+}
+
+async function toggleContactVisibility(btn) {
+  const res = await fetch(btn.dataset.url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken() }
+  });
+  const data = await res.json();
+  if (data.visible) { btn.classList.remove('toggle-off'); btn.classList.add('toggle-on'); }
+  else { btn.classList.remove('toggle-on'); btn.classList.add('toggle-off'); }
+}
+</script>
+{% endblock %}

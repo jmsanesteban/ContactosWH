@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios{% endblock %}
+{% block page_title %}Gestión de usuarios{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('admin.user_new') }}" class="btn btn-primary btn-sm">
+  + Nuevo usuario
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if users %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th>Creado</th>
+          <th style="width:10rem"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:.75rem">
+              <div class="table-avatar">{{ user.username[0].upper() }}</div>
+              <div>
+                <div class="fw-medium">{{ user.username }}</div>
+                {% if user.must_change_password %}
+                  <div class="text-sm text-warning">Debe cambiar contraseña</div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="text-muted">{{ user.email }}</td>
+          <td>
+            <span class="badge badge-{{ user.role }}">
+              {{ 'Administrador' if user.is_admin else 'Usuario' }}
+            </span>
+          </td>
+          <td>
+            <span class="badge {% if user.is_active %}badge-success{% else %}badge-danger{% endif %}">
+              {{ 'Activo' if user.is_active else 'Inactivo' }}
+            </span>
+          </td>
+          <td class="text-muted text-sm">{{ user.created_at.strftime('%d/%m/%Y') }}</td>
+          <td>
+            <div class="action-btns">
+              <a href="{{ url_for('admin.user_edit', user_id=user.id) }}" class="btn btn-xs btn-ghost">Editar</a>
+
+              {% if user.id != current_user.id %}
+                <form method="POST" action="{{ url_for('admin.user_toggle', user_id=user.id) }}" style="display:inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-xs btn-ghost"
+                          title="{{ 'Desactivar' if user.is_active else 'Activar' }}">
+                    {{ '⏸' if user.is_active else '▶' }}
+                  </button>
+                </form>
+
+                <form method="POST" action="{{ url_for('admin.user_reset_password', user_id=user.id) }}" style="display:inline"
+                      onsubmit="return confirm('¿Restablecer contraseña de {{ user.username }}?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-xs btn-ghost" title="Restablecer contraseña">🔑</button>
+                </form>
+
+                <form method="POST" action="{{ url_for('admin.user_delete', user_id=user.id) }}" style="display:inline"
+                      onsubmit="return confirm('¿Eliminar usuario {{ user.username }}? Esta acción no se puede deshacer.')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-xs btn-danger" title="Eliminar">✕</button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>Sin usuarios</h3>
+    <a href="{{ url_for('admin.user_new') }}" class="btn btn-primary">Crear usuario</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

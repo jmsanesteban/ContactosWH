@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="auth-card-header">
+    <div class="auth-logo">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <h1 class="auth-title">ContactosWH</h1>
+    <p class="auth-subtitle">Accede a tu cuenta</p>
+  </div>
+
+  <form method="POST" class="auth-form">
+    {{ form.hidden_tag() }}
+
+    <div class="form-group">
+      <label class="form-label">{{ form.username.label.text }}</label>
+      {{ form.username(class="form-input", placeholder="Nombre de usuario", autofocus=True) }}
+      {% if form.username.errors %}
+        <span class="form-error">{{ form.username.errors[0] }}</span>
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">{{ form.password.label.text }}</label>
+      {{ form.password(class="form-input", placeholder="••••••••") }}
+      {% if form.password.errors %}
+        <span class="form-error">{{ form.password.errors[0] }}</span>
+      {% endif %}
+    </div>
+
+    <div class="form-check">
+      {{ form.remember_me() }}
+      <label for="{{ form.remember_me.id }}">{{ form.remember_me.label.text }}</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-full">
+      {{ form.submit.label.text }}
+    </button>
+  </form>
+</div>
+{% endblock %}

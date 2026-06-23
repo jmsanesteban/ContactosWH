@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}Campos{% endblock %}
+{% block page_title %}Gestión de campos{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Campos definidos</h3>
+    <p class="text-muted text-sm" style="margin-top:.25rem">
+      Arrastra las filas para reordenar. Activa o desactiva la visibilidad de cada campo.
+    </p>
+  </div>
+
+  {% if fields %}
+  <div class="table-responsive">
+    <table class="table" id="fieldsTable">
+      <thead>
+        <tr>
+          <th style="width:2.5rem"></th>
+          <th>Nombre interno</th>
+          <th>Nombre visible</th>
+          <th style="width:7rem">Visibilidad</th>
+          <th style="width:8rem">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="fieldsTbody">
+        {% for field in fields %}
+        <tr data-id="{{ field.id }}" class="draggable-row">
+          <td class="drag-handle" title="Arrastrar para reordenar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </td>
+          <td class="text-muted text-sm">{{ field.name }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.field_rename', field_id=field.id) }}"
+                  class="inline-rename-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="text" name="display_name" value="{{ field.display_name }}"
+                     class="form-input form-input-sm inline-rename-input">
+              <button type="submit" class="btn btn-xs btn-ghost">✓</button>
+            </form>
+          </td>
+          <td>
+            <button class="toggle-btn {% if field.is_visible %}toggle-on{% else %}toggle-off{% endif %}"
+                    data-id="{{ field.id }}"
+                    data-url="{{ url_for('admin.field_toggle', field_id=field.id) }}"
+                    onclick="toggleVisibility(this)">
+              <span class="toggle-knob"></span>
+            </button>
+          </td>
+          <td>
+            <span class="badge {% if field.is_visible %}badge-success{% else %}badge-muted{% endif %} visibility-badge-{{ field.id }}">
+              {{ 'Visible' if field.is_visible else 'Oculto' }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>Sin campos definidos</h3>
+    <p>Importa un archivo Excel para crear los campos automáticamente.</p>
+    <a href="{{ url_for('admin.import_contacts') }}" class="btn btn-primary">Importar Excel</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function toggleVisibility(btn) {
+  const url = btn.dataset.url;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' }
+  });
+  const data = await res.json();
+  const id = btn.dataset.id;
+  if (data.visible) {
+    btn.classList.remove('toggle-off'); btn.classList.add('toggle-on');
+  } else {
+    btn.classList.remove('toggle-on'); btn.classList.add('toggle-off');
+  }
+  const badge = document.querySelector(`.visibility-badge-${id}`);
+  if (badge) {
+    badge.textContent = data.visible ? 'Visible' : 'Oculto';
+    badge.className = `badge ${data.visible ? 'badge-success' : 'badge-muted'} visibility-badge-${id}`;
+  }
+}
+
+// Drag-to-reorder
+let dragging = null;
+document.querySelectorAll('.draggable-row').forEach(row => {
+  row.draggable = true;
+  row.addEventListener('dragstart', e => { dragging = row; row.classList.add('dragging'); });
+  row.addEventListener('dragend', () => { row.classList.remove('dragging'); saveOrder(); });
+  row.addEventListener('dragover', e => {
+    e.preventDefault();
+    const tbody = document.getElementById('fieldsTbody');
+    const after = getDragAfterElement(tbody, e.clientY);
+    if (after == null) tbody.appendChild(dragging);
+    else tbody.insertBefore(dragging, after);
+  });
+});
+
+function getDragAfterElement(container, y) {
+  const els = [...container.querySelectorAll('.draggable-row:not(.dragging)')];
+  return els.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+async function saveOrder() {
+  const order = [...document.querySelectorAll('.draggable-row')].map(r => parseInt(r.dataset.id));
+  await fetch('{{ url_for("admin.fields_reorder") }}', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order })
+  });
+}
+</script>
+{% endblock %}

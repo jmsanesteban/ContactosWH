@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Importar Excel{% endblock %}
+{% block page_title %}Importar contactos{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <div class="card-header">
+    <h2 class="card-title">Importar desde Excel</h2>
+    <p class="text-muted text-sm" style="margin-top:.25rem">
+      La primera fila del archivo debe contener los títulos de las columnas.
+      Se crearán automáticamente los campos que no existan.
+    </p>
+  </div>
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        <label class="form-label">{{ form.file.label.text }}</label>
+        <div class="file-drop-zone" id="dropZone">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+          </svg>
+          <p>Arrastra tu archivo aquí o <span class="link">haz clic para seleccionar</span></p>
+          <p class="text-sm text-muted">Formatos admitidos: .xlsx, .xls · Máximo 32 MB</p>
+          {{ form.file(class="file-input", id="fileInput", accept=".xlsx,.xls") }}
+        </div>
+        <div class="file-selected" id="fileSelected" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span id="fileName">—</span>
+        </div>
+        {% if form.file.errors %}
+          <span class="form-error">{{ form.file.errors[0] }}</span>
+        {% endif %}
+      </div>
+
+      <div class="form-check">
+        {{ form.update_existing() }}
+        <label for="{{ form.update_existing.id }}">{{ form.update_existing.label.text }}</label>
+      </div>
+
+      <div class="info-box" style="margin-top:1rem">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Si activas la opción de actualizar, los contactos se identificarán por los campos <strong>nombre</strong> y <strong>apellidos</strong>.</span>
+      </div>
+
+      <div class="btn-row" style="margin-top:1.5rem">
+        <a href="{{ url_for('admin.contacts') }}" class="btn btn-ghost">Cancelar</a>
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const input = document.getElementById('fileInput');
+const zone = document.getElementById('dropZone');
+const selected = document.getElementById('fileSelected');
+const fileName = document.getElementById('fileName');
+
+input.addEventListener('change', () => showFile(input.files[0]));
+zone.addEventListener('click', () => input.click());
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) {
+    input.files = e.dataTransfer.files;
+    showFile(e.dataTransfer.files[0]);
+  }
+});
+
+function showFile(file) {
+  if (!file) return;
+  fileName.textContent = file.name;
+  zone.style.display = 'none';
+  selected.style.display = 'flex';
+}
+</script>
+{% endblock %}

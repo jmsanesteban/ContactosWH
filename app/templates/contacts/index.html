@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Contactos{% endblock %}
+{% block page_title %}Contactos{% endblock %}
+
+{% block topbar_actions %}
+<form class="search-form" method="GET" action="{{ url_for('contacts.index') }}">
+  <div class="search-input-wrap">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Buscar contactos…">
+  </div>
+</form>
+{% endblock %}
+
+{% block content %}
+{% if not fields %}
+  <div class="empty-state">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+    </svg>
+    <h3>No hay campos configurados</h3>
+    <p>{{ 'Importa un archivo Excel para comenzar.' if current_user.is_admin else 'El administrador aún no ha configurado los campos.' }}</p>
+    {% if current_user.is_admin %}
+      <a href="{{ url_for('admin.import_contacts') }}" class="btn btn-primary">Importar Excel</a>
+    {% endif %}
+  </div>
+{% elif not contacts %}
+  <div class="empty-state">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <h3>{% if search %}Sin resultados{% else %}Sin contactos{% endif %}</h3>
+    <p>{% if search %}No se encontraron contactos para «{{ search }}».{% else %}Aún no hay contactos registrados.{% endif %}</p>
+    {% if search %}
+      <a href="{{ url_for('contacts.index') }}" class="btn btn-ghost">Limpiar búsqueda</a>
+    {% elif current_user.is_admin %}
+      <a href="{{ url_for('admin.import_contacts') }}" class="btn btn-primary">Importar Excel</a>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:3rem">#</th>
+            {% for field in fields[:6] %}
+              <th>{{ field.display_name }}</th>
+            {% endfor %}
+            <th style="width:5rem"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contact in contacts %}
+          <tr>
+            <td class="text-muted text-sm">{{ contact.id }}</td>
+            {% for field in fields[:6] %}
+              <td>{{ contact.get_value(field.id) or '—' }}</td>
+            {% endfor %}
+            <td>
+              <a href="{{ url_for('contacts.detail', contact_id=contact.id) }}" class="btn btn-xs btn-ghost">
+                Ver
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination-wrap">
+      <span class="pagination-info">
+        {{ pagination.total }} contacto{{ 's' if pagination.total != 1 }}
+        · Página {{ pagination.page }} de {{ pagination.pages }}
+      </span>
+      <div class="pagination">
+        {% if pagination.has_prev %}
+          <a href="{{ url_for('contacts.index', page=pagination.prev_num, q=search) }}" class="page-btn">‹</a>
+        {% endif %}
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+            <a href="{{ url_for('contacts.index', page=p, q=search) }}"
+               class="page-btn {% if p == pagination.page %}active{% endif %}">{{ p }}</a>
+          {% else %}
+            <span class="page-ellipsis">…</span>
+          {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+          <a href="{{ url_for('contacts.index', page=pagination.next_num, q=search) }}" class="page-btn">›</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}
