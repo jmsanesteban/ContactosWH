@@ -28,7 +28,7 @@ Internet → Nginx (80) → Gunicorn (8000) → Flask App → MariaDB (3306)
 
 | Capa | Tecnología | Rol |
 |---|---|---|
-| Proxy inverso | Nginx 1.27 | SSL termination, ficheros estáticos, cabeceras de seguridad |
+| Proxy inverso | Nginx 1.31.2 | SSL termination, ficheros estáticos, cabeceras de seguridad |
 | Servidor WSGI | Gunicorn 22 | Workers Python (4 por defecto) |
 | Aplicación | Flask 3.0 (Python 3.12) | Lógica de negocio, plantillas Jinja2 |
 | Base de datos | MariaDB 11 | Almacenamiento persistente |
@@ -62,7 +62,7 @@ Internet → Nginx (80) → Gunicorn (8000) → Flask App → MariaDB (3306)
 | Componente | Versión | Notas |
 |---|---|---|
 | MariaDB | 11 | Compatible con MySQL 8 |
-| Nginx | 1.27-alpine | Ligero, Alpine Linux |
+| Nginx | 1.31.2-alpine3.23 | Ligero, Alpine Linux |
 | Docker Engine | 24+ | Recomendado |
 | Docker Compose | v2.x | Sintaxis `version: '3.9'` |
 
