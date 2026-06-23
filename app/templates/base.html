@@ -152,10 +152,6 @@
         {% endif %}
       {% endwith %}
 
-      {% block content %}{% endblock %}
-    </main>
-  </div>
-
 {% else %}
   <!-- Auth layout -->
   <div class="auth-wrapper">
@@ -171,7 +167,14 @@
         </div>
       {% endif %}
     {% endwith %}
-    {% block content %}{% endblock %}
+{% endif %}
+
+{% block content %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+    </main>
+  </div>
+{% else %}
   </div>
 {% endif %}
 
