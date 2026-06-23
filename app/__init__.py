@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from .config import config
-from .extensions import db, login_manager
+from .extensions import db, login_manager, csrf
 
 
 def create_app(config_name=None):
@@ -16,6 +16,7 @@ def create_app(config_name=None):
 
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     from .models.user import User
 
