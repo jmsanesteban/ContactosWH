@@ -1,6 +1,14 @@
+> ## ⚠️ Proyecto descontinuado
+>
+> Este proyecto ha dejado de mantenerse como aplicación independiente. Toda su funcionalidad (contactos, campos personalizados, notas, vínculos/personajes) se ha integrado dentro de **[Warhammer Fantasy Tools](https://github.com/jmsanesteban/WarhammerFantasyTools)** como el módulo "Contactos", con un único login, una única base de datos y un panel de administración compartido.
+>
+> Este repositorio se mantiene solo como referencia histórica del código original. No recibirá más cambios.
+
+---
+
 # ContactosWH — Gestión de Contactos
 
-Aplicación web para la gestión de contactos con importación/exportación Excel, control de visibilidad y gestión de usuarios.
+Aplicación web para la gestión de contactos con importación/exportación Excel, control de visibilidad, gestión de usuarios, personajes y notas.
 
 ---
 
@@ -13,7 +21,7 @@ Aplicación web para la gestión de contactos con importación/exportación Exce
 5. [Despliegue en producción (Debian/Ubuntu)](#5-despliegue-en-producción-debianubuntu)
 6. [Configuración (variables de entorno)](#6-configuración-variables-de-entorno)
 7. [Funcionalidades y cómo probarlas](#7-funcionalidades-y-cómo-probarlas)
-8. [Gestión de usuarios](#8-gestión-de-usuarios)
+8. [Gestión de usuarios y personajes](#8-gestión-de-usuarios-y-personajes)
 9. [Formato del Excel de importación](#9-formato-del-excel-de-importación)
 10. [Seguridad](#10-seguridad)
 11. [Solución de problemas](#11-solución-de-problemas)
@@ -75,19 +83,35 @@ contactos_wh/
 ├── app/
 │   ├── __init__.py               # Factory de la aplicación Flask
 │   ├── config.py                 # Configuración por entorno
-│   ├── extensions.py             # SQLAlchemy, LoginManager
+│   ├── extensions.py             # SQLAlchemy, LoginManager, CSRFProtect
 │   ├── models/
 │   │   ├── user.py               # Modelo User (admin/user, hash contraseña)
 │   │   ├── field.py              # FieldDefinition (campos dinámicos)
-│   │   └── contact.py            # Contact + ContactValue (valores EAV)
+│   │   ├── contact.py            # Contact + ContactValue (valores EAV)
+│   │   ├── character.py          # Character + CharacterContact
+│   │   └── note.py               # ContactNote (notas globales y privadas)
 │   ├── blueprints/
 │   │   ├── auth/                 # Login, logout, cambio de contraseña
-│   │   ├── contacts/             # Vista de contactos (usuarios)
+│   │   ├── contacts/             # Vista de contactos, relaciones, notas
 │   │   └── admin/                # Panel admin completo
 │   ├── utils/
 │   │   ├── excel.py              # parse_excel(), export_to_excel()
 │   │   └── security.py           # generate_secure_password()
-│   ├── templates/                # Jinja2 HTML
+│   ├── templates/
+│   │   ├── base.html             # Layout principal con sidebar
+│   │   ├── admin/
+│   │   │   ├── dashboard.html
+│   │   │   ├── contacts.html
+│   │   │   ├── fields.html       # CRUD de campos
+│   │   │   ├── users.html
+│   │   │   ├── user_form.html
+│   │   │   ├── characters.html   # Gestión de personajes
+│   │   │   ├── character_form.html
+│   │   │   ├── import.html
+│   │   │   └── export.html
+│   │   └── contacts/
+│   │       ├── index.html        # Listado de contactos
+│   │       └── detail.html       # Ficha: datos + personajes + notas
 │   └── static/
 │       ├── css/style.css         # Diseño moderno minimalista
 │       └── js/app.js             # Sidebar, CSRF, alerts
@@ -101,27 +125,46 @@ contactos_wh/
 └── README.md
 ```
 
-### Modelo de datos (EAV)
+### Modelo de datos
 
 ```
-users                field_definitions
-─────────────        ─────────────────────
-id (PK)              id (PK)
-username             name          ← nombre interno (slug del header Excel)
-email                display_name  ← nombre visible en UI
-password_hash        is_visible
-role                 field_order
-is_active            created_at
+users                   field_definitions
+─────────────           ─────────────────────
+id (PK)                 id (PK)
+username                name          ← slug interno (ej. lugar_de_trabajo)
+email                   display_name  ← nombre visible en UI
+password_hash           is_visible
+role                    field_order
+is_active               created_at
 must_change_password
 created_at
 
-contacts             contact_values
-─────────────        ─────────────────────────────
-id (PK)              id (PK)
-is_visible           contact_id (FK → contacts)
-created_at           field_id   (FK → field_definitions)
-updated_at           value (TEXT)
+contacts                contact_values
+─────────────           ─────────────────────────────
+id (PK)                 id (PK)
+is_visible              contact_id (FK → contacts)
+created_at              field_id   (FK → field_definitions)
+updated_at              value (TEXT)
 created_by_id
+
+characters              character_contacts
+─────────────           ─────────────────────────────────
+id (PK)                 id (PK)
+name                    character_id (FK → characters)
+user_id (FK → users)    contact_id   (FK → contacts)
+is_active               relationship (TEXT)
+created_at              updated_at
+                        UNIQUE (character_id, contact_id)
+
+contact_notes
+─────────────────────────────────────────
+id (PK)
+contact_id (FK → contacts)
+author_id  (FK → users)
+content    (TEXT)
+is_global  (BOOL)  ← false = solo autor + admin
+created_at
+updated_at
 ```
 
 ---
@@ -137,10 +180,9 @@ created_by_id
 ### Pasos
 
 ```bash
-# 1. Clonar / copiar el proyecto
-cd /opt
-git clone <repo> contactos_wh
-cd contactos_wh
+# 1. Clonar el proyecto
+git clone https://github.com/jmsanesteban/ContactosWH.git
+cd ContactosWH
 
 # 2. Crear el archivo de entorno
 cp .env.example .env
@@ -163,6 +205,16 @@ En el primer arranque verás en los logs:
 ```
 
 Accede a `http://IP_DEL_SERVIDOR` e inicia sesión con `admin` y la contraseña mostrada.
+
+> **Nota:** `init_db` se ejecuta automáticamente al arrancar el contenedor. Es idempotente: crea las tablas que falten sin tocar las existentes, por lo que es seguro después de actualizar el código con `--build`.
+
+### Actualizar a una nueva versión
+
+```bash
+git pull
+docker compose up -d --build
+# init_db se ejecuta automáticamente y crea las tablas nuevas
+```
 
 ### Comandos útiles
 
@@ -289,20 +341,61 @@ Ejemplo:
 
 Los campos se crean automáticamente si no existen.
 
-### 7.3 Visibilidad de contactos y campos
+### 7.3 Gestión de campos desde la UI
+
+Además de la creación automática vía Excel, los campos se pueden gestionar manualmente:
+
+- **Admin → Campos → + Nuevo campo**: introduce un nombre visible; el slug interno se genera automáticamente.
+- **Renombrar**: edita el nombre visible directamente en la tabla.
+- **Reordenar**: arrastra las filas.
+- **Visibilidad**: toggle por campo. Los usuarios normales solo ven campos visibles.
+- **Eliminar (✕)**: elimina el campo y todos sus valores en los contactos (con confirmación).
+
+### 7.4 Gestión de personajes
+
+Cada usuario puede tener uno o varios **personajes** (los administradores pueden tener ninguno). Los personajes son los que tienen relación con los contactos.
+
+**Admin → Personajes:**
+- Crear, editar y eliminar personajes.
+- Asignar un personaje a un usuario (o dejarlo sin asignar temporalmente).
+- Ver cuántos contactos tiene vinculados cada personaje.
+
+### 7.5 Relaciones personaje↔contacto
+
+Al abrir la ficha de un contacto:
+
+- **Admin**: ve todos los personajes vinculados a ese contacto con su descripción de relación (editable inline). Puede vincular nuevos personajes y desvincular los existentes.
+- **Usuario (jugador)**: ve sus propios personajes. Para cada uno puede escribir/editar la relación con ese contacto. Submitting el campo de relación vincula el personaje al contacto si aún no lo estaba.
+
+Cada personaje puede tener una relación distinta con el mismo contacto. Un contacto puede estar vinculado a personajes de distintos usuarios.
+
+### 7.6 Notas de contacto
+
+En la ficha de cada contacto existe una sección de **notas**:
+
+| Tipo | Visible para | Quien puede editar |
+|---|---|---|
+| Global | Todos los usuarios | El autor + admins |
+| Privada | Solo el autor + admins | El autor + admins |
+
+- Cualquier usuario puede añadir notas (globales o privadas) en cualquier contacto visible.
+- Los admins ven todas las notas de todos los usuarios, con el nombre del autor indicado.
+- Los usuarios solo ven sus propias notas privadas y las notas globales de todos.
+
+### 7.7 Visibilidad de contactos y campos
 
 - **Admin → Campos**: activa/desactiva la visibilidad de cada campo con el toggle. Arrastra filas para reordenar.
 - **Admin → Gestionar contactos**: activa/desactiva la visibilidad de contactos individuales.
 - Los usuarios normales solo ven contactos y campos marcados como visibles.
 
-### 7.4 Exportar contactos
+### 7.8 Exportar contactos
 
 1. Admin → **Exportar Excel**
 2. Selecciona los contactos (por defecto todos)
 3. Elige si exportar solo campos visibles o todos
 4. Clic en **Exportar a Excel** → descarga `contactos_export.xlsx`
 
-### 7.5 Gestión de usuarios
+### 7.9 Gestión de usuarios
 
 1. Admin → **Usuarios** → **Nuevo usuario**
 2. Rellena usuario, email y rol (Usuario / Administrador)
@@ -317,14 +410,21 @@ Acciones disponibles sobre usuarios:
 
 ---
 
-## 8. Gestión de usuarios
+## 8. Gestión de usuarios y personajes
 
-### Roles
+### Roles de usuario
 
 | Rol | Acceso |
 |---|---|
-| `admin` | Todo: contactos, campos, usuarios, importar, exportar |
-| `user` | Solo ver contactos y campos marcados como visibles |
+| `admin` | Todo: contactos, campos, usuarios, personajes, importar, exportar. Ve todas las relaciones y notas. |
+| `user` | Contactos y campos visibles. Relaciones de sus propios personajes. Sus notas + notas globales. |
+
+### Personajes
+
+- Un usuario puede tener 0, 1 o varios personajes (los admins pueden tener 0).
+- Los personajes los gestiona el administrador y se asignan a usuarios.
+- Cada personaje tiene su propio conjunto de contactos vinculados.
+- La relación de un personaje con un contacto es independiente de la de otros personajes con el mismo contacto.
 
 ### Contraseñas
 
@@ -369,6 +469,8 @@ Si activas "Actualizar contactos existentes", el sistema busca coincidencias por
 | XSS | Auto-escape en Jinja2 |
 | Autenticación | Flask-Login con sesión segura firmada |
 | Autorización | Decorator `@admin_required` en todas las rutas de admin |
+| Aislamiento de notas | Notas privadas filtradas por `author_id` en la query |
+| Aislamiento de personajes | Verificación de `char.user_id == current_user.id` antes de editar |
 | Cabeceras HTTP | `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` via Nginx |
 | Subida de ficheros | Validación de extensión + límite 32 MB |
 | Contraseñas seguras | `secrets` module (CSPRNG), política de complejidad |
@@ -392,6 +494,10 @@ docker compose restart app
 ```bash
 docker compose exec app python manage.py reset_password admin
 ```
+
+### Error al ejecutar init_db manualmente
+
+`init_db` se ejecuta automáticamente al arrancar el contenedor. Si lo lanzas de nuevo manualmente es seguro: crea solo las tablas que falten sin tocar las existentes.
 
 ### Error 500 al importar Excel
 
